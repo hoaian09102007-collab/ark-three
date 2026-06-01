@@ -1,35 +1,103 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=no, minimum-scale=1.0, maximum-scale=1.0">
-    <title>WebAR Mô Hình Chim - AR.js</title>
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-  </head>
-  <body style="margin: 0px; overflow: hidden;">
-    
-    <a-scene embedded vr-mode-ui="enabled: false" arjs="sourceType: webcam; debugUIEnabled: false;">
-      
-      <a-assets>
-        <a-asset-item id="bird-obj" src="./assets/Palm_01.obj"></a-asset-item>
-        <a-asset-item id="bird-mtl" src="./assets/Palm_01.mtl"></a-asset-item>
-      </a-assets>
-      
-      <a-marker preset="hiro">
-        
-        <a-obj-model 
-          src="#bird-obj" 
-          mtl="#bird-mtl" 
-          position="0 0 0" 
-          scale="0.05 0.05 0.05" 
-          rotation="-90 0 0">
-        </a-obj-model>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App Xem Video 360 Độ</title>
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <style>
+        /* Giao diện nút bấm cấp quyền và thông báo */
+        #ui-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 999;
+            text-align: center;
+            font-family: sans-serif;
+        }
+        .btn {
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: 2px solid white;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.9);
+            color: black;
+        }
+        #permission-btn {
+            display: none; /* Chỉ hiển thị trên iOS nếu cần */
+        }
+    </style>
+</head>
+<body>
 
-      </a-marker>
-      
-      <a-entity camera></a-entity>
-      
+    <a-scene loading-screen="dotsColor: white; backgroundColor: black">
+        
+        <a-assets>
+            <video id="video360" 
+                   src="https://bitmovin-a.akamaihd.net/content/playhouse-vr/progressive.mp4" 
+                   autoplay 
+                   loop 
+                   muted 
+                   playsinline 
+                   webkit-playsinline 
+                   crossorigin="anonymous">
+            </video>
+        </a-assets>
+
+        <a-entity camera look-controls="magicWindowTrackingEnabled: true; touchEnabled: true"></a-entity>
+
+        <a-videosphere src="#video360" rotation="0 -90 0"></a-videosphere>
+
     </a-scene>
-  </body>
+
+    <div id="ui-container">
+        <button id="permission-btn" class="btn">Kích hoạt Cảm biến (iOS)</button>
+        <button id="play-btn" class="btn">Phát / Tạm dừng</button>
+    </div>
+
+    <script>
+        const video = document.querySelector('#video360');
+        const playBtn = document.querySelector('#play-btn');
+        const permissionBtn = document.querySelector('#permission-btn');
+
+        // 1. Xử lý nút Phát/Tạm dừng (Trình duyệt chặn tự động phát video có tiếng)
+        playBtn.addEventListener('click', () => {
+            if (video.paused) {
+                video.play();
+                video.muted = false; // Bật âm thanh sau khi user tương tác
+                playBtn.innerText = "Tạm dừng";
+            } else {
+                video.pause();
+                playBtn.innerText = "Phát Video";
+            }
+        });
+
+        // 2. Yêu cầu quyền truy cập cảm biến (Bắt buộc riêng đối với iOS 13+)
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            // Hiển thị nút cấp quyền nếu là thiết bị iOS
+            permissionBtn.style.display = 'inline-block';
+            
+            permissionBtn.addEventListener('click', () => {
+                DeviceOrientationEvent.requestPermission()
+                    .then(permissionState => {
+                        if (permissionState === 'granted') {
+                            permissionBtn.style.display = 'none';
+                            // Tải lại scene để cập nhật cảm biến
+                            document.querySelector('a-scene').components['look-controls'].setupControls();
+                        } else {
+                            alert('Bạn đã từ chối quyền truy cập cảm biến xoay!');
+                        }
+                    })
+                    .catch(console.error);
+            });
+        }
+    </script>
+</body>
 </html>
